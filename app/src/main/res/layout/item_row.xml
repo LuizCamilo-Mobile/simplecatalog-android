@@ -1,33 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:orientation="vertical"
     android:padding="12dp">
 
-    <!-- Título do item -->
     <TextView
-        android:id="@+id/itemTitle"
-        android:layout_width="0dp"
+        android:id="@+id/tvTitle"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:text="Título"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        android:textSize="18sp"
+        android:textStyle="bold"/>
 
-    <!-- Subtítulo do item -->
     <TextView
-        android:id="@+id/itemSubtitle"
-        android:layout_width="0dp"
+        android:id="@+id/tvSubtitle"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textSize="14sp"
-        android:text="Subtítulo"
-        app:layout_constraintTop_toBottomOf="@id/itemTitle"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:paddingTop="4dp"/>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+        android:layout_marginTop="4dp"/>
+</LinearLayout>
