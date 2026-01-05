@@ -1,64 +1,66 @@
 package br.com.simplecatalog.ui.viewmodel;
 
+import androidx.annotation.MainThread;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import br.com.simplecatalog.domain.model.Item;
-import br.com.simplecatalog.domain.usecase.GetItemsUseCase;
 
-/**
- * ViewModel (MVVM):
- * - Mantém o estado da tela
- * - Chama o UseCase (camada de domínio)
- * - Publica resultado via LiveData para a UI observar
- *
- * Importante:
- * - Não referencia Views, Activity ou Context (mantém desacoplamento)
- * - Operações pesadas (rede/banco) são feitas em background para evitar ANR
- */
 public class ItemsViewModel extends ViewModel {
 
-    private final GetItemsUseCase getItemsUseCase;
-
-    // Estados observáveis pela UI
     private final MutableLiveData<List<Item>> items = new MutableLiveData<>();
     private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
     private final MutableLiveData<String> error = new MutableLiveData<>(null);
 
-    // Executor simples para rodar tarefas fora da UI thread
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-    public ItemsViewModel(GetItemsUseCase getItemsUseCase) {
-        this.getItemsUseCase = getItemsUseCase;
+    public LiveData<List<Item>> getItems() {
+        return items;
     }
 
-    // Exposição “read-only” para a UI (boa prática)
-    public LiveData<List<Item>> getItems() { return items; }
-    public LiveData<Boolean> getLoading() { return loading; }
-    public LiveData<String> getError() { return error; }
+    public LiveData<Boolean> getLoading() {
+        return loading;
+    }
 
-    /**
-     * Carrega itens usando o UseCase.
-     * Deve ser chamado pela Activity (ex: onCreate) para iniciar o fluxo.
-     */
+    public LiveData<String> getError() {
+        return error;
+    }
+
+    @MainThread
     public void loadItems() {
+        // Evita disparar cargas simultâneas (opcional, mas bom pra entrevista)
+        Boolean isLoading = loading.getValue();
+        if (isLoading != null && isLoading) return;
+
         loading.setValue(true);
         error.setValue(null);
 
         executor.execute(() -> {
             try {
-                List<Item> result = getItemsUseCase.execute();
+                // Simula tarefa pesada (rede/DB/parse)
+                Thread.sleep(1000);
 
-                // postValue porque estamos em thread de background
-                items.postValue(result);
+                List<Item> hardcoded = Arrays.asList(
+                        new Item(1L, "Café", "500g • torrado"),
+                        new Item(2L, "Leite", "Integral • 1L"),
+                        new Item(3L, "Arroz", "Tipo 1 • 5kg"),
+                        new Item(4L, "Feijão", "Carioca • 1kg"),
+                        new Item(5L, "Açúcar", "Refinado • 1kg"),
+                        new Item(6L, "Macarrão", "Espaguete • 500g")
+                );
+
+
+                items.postValue(hardcoded);
+            } catch (InterruptedException e) {
+                error.postValue("Carga interrompida");
             } catch (Exception e) {
-                e.printStackTrace();
-                error.postValue("Falha ao carregar itens.");
+                error.postValue("Erro inesperado: " + e.getClass().getSimpleName());
             } finally {
                 loading.postValue(false);
             }
@@ -68,8 +70,6 @@ public class ItemsViewModel extends ViewModel {
     @Override
     protected void onCleared() {
         super.onCleared();
-        // Libera o executor para não manter threads vivas após a tela morrer
-        executor.shutdown();
+        executor.shutdownNow();
     }
 }
-

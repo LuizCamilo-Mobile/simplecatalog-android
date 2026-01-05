@@ -3,87 +3,69 @@ package br.com.simplecatalog.ui;
 import android.os.Bundle;
 import android.view.View;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-import java.util.ArrayList;
-
 import br.com.simplecatalog.databinding.ActivityMainBinding;
-import br.com.simplecatalog.di.AppContainer;
 import br.com.simplecatalog.ui.adapter.ItemsAdapter;
 import br.com.simplecatalog.ui.viewmodel.ItemsViewModel;
-import br.com.simplecatalog.ui.viewmodel.ItemsViewModelFactory;
 
-/**
- * Activity (UI):
- * - Configura layout, RecyclerView e observa estados do ViewModel
- * - Não faz chamadas de rede ou banco diretamente (isso fica no repository/usecase)
- */
 public class MainActivity extends AppCompatActivity {
 
     private ActivityMainBinding binding;
+
     private ItemsAdapter adapter;
     private ItemsViewModel viewModel;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // ViewBinding: evita findViewById e dá segurança de null
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        // 1) RecyclerView + Adapter
-        setupRecyclerView();
-
-        // 2) Monta dependências via AppContainer e cria ViewModel via Factory
-        setupViewModel();
-
-        // 3) Observa estados do ViewModel e atualiza UI
-        observeViewModel();
-
-        // 4) Dispara carregamento inicial (pode ser cache-first ou refresh)
-        viewModel.loadItems();
-    }
-
-    private void setupRecyclerView() {
-        adapter = new ItemsAdapter(new ArrayList<>());
-
+        adapter = new ItemsAdapter();
         binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
         binding.recyclerView.setAdapter(adapter);
-    }
 
-    private void setupViewModel() {
-        // AppContainer fornece as dependências (UseCase já composto com Repository)
-        AppContainer container = AppContainer.getInstance(this);
+        viewModel = new ViewModelProvider(this).get(ItemsViewModel.class);
 
-        ItemsViewModelFactory factory = new ItemsViewModelFactory(container.getItemsUseCase);
-        viewModel = new ViewModelProvider(this, factory).get(ItemsViewModel.class);
+        observeViewModel();
+
+        // Dispara carga inicial
+        viewModel.loadItems();
+
+        // Botão opcional (se existir no layout) para repetir o ciclo
+        binding.retryButton.setOnClickListener(v -> viewModel.loadItems());
     }
 
     private void observeViewModel() {
-        viewModel.getItems().observe(this, items -> {
-            // Atualiza lista
-            adapter.updateItems(items);
-
-            // Se tem itens, mostra lista e esconde estado vazio (se existir)
-            binding.recyclerView.setVisibility(View.VISIBLE);
-            binding.emptyState.setVisibility(items == null || items.isEmpty() ? View.VISIBLE : View.GONE);
-        });
-
         viewModel.getLoading().observe(this, isLoading -> {
-            // Mostra/oculta progress
-            binding.progressBar.setVisibility(Boolean.TRUE.equals(isLoading) ? View.VISIBLE : View.GONE);
+            boolean loading = isLoading != null && isLoading;
+            binding.progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
+
+            // Durante loading, você pode esconder lista/erro para ficar claro
+            binding.recyclerView.setVisibility(loading ? View.GONE : View.VISIBLE);
         });
 
         viewModel.getError().observe(this, message -> {
-            if (message != null) {
-                binding.errorText.setText(message);
-                binding.errorText.setVisibility(View.VISIBLE);
-            } else {
-                binding.errorText.setVisibility(View.GONE);
-            }
+            boolean hasError = message != null && !message.trim().isEmpty();
+            binding.errorText.setText(hasError ? message : "");
+            binding.errorText.setVisibility(hasError ? View.VISIBLE : View.GONE);
+            binding.retryButton.setVisibility(hasError ? View.VISIBLE : View.GONE);
         });
+
+        viewModel.getItems().observe(this, items -> {
+            adapter.submitList(items);
+            // Você pode optar por mostrar "empty" aqui, mas não foi exigido neste exercício.
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        binding = null; // evita segurar referência desnecessária
     }
 }
