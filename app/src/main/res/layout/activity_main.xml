@@ -1,56 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ui.MainActivity">
+    android:orientation="vertical"
+    android:padding="16dp">
 
-    <!-- RecyclerView (Lista de itens) -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerView"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/emptyState"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        tools:listitem="@layout/item_row"/>
+    <!-- Botões de controle do estado -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
 
-    <!-- ProgressBar (Carregamento) -->
+        <Button
+            android:id="@+id/btnLoad"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Carregar Dados" />
+
+        <Button
+            android:id="@+id/btnError"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="Simular Erro" />
+
+        <Button
+            android:id="@+id/btnEmpty"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="Esvaziar Lista" />
+    </LinearLayout>
+
+    <!-- Loading -->
     <ProgressBar
-        android:id="@+id/progressBar"
+        android:id="@+id/progress"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:visibility="gone"/>
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="24dp"
+        android:visibility="gone" />
 
-    <!-- TextView (Erro) -->
+    <!-- Empty state -->
     <TextView
-        android:id="@+id/errorText"
-        android:layout_width="wrap_content"
+        android:id="@+id/tvEmpty"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Erro ao carregar itens"
+        android:layout_marginTop="24dp"
+        android:gravity="center"
+        android:text="Nenhum item para exibir."
         android:textSize="16sp"
-        android:textColor="@android:color/holo_red_light"
-        app:layout_constraintTop_toBottomOf="@id/progressBar"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:visibility="gone"/>
+        android:visibility="gone" />
 
-    <!-- TextView (Estado vazio) -->
+    <!-- Error state -->
     <TextView
-        android:id="@+id/emptyState"
-        android:layout_width="wrap_content"
+        android:id="@+id/tvError"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Nenhum item encontrado"
-        android:textSize="18sp"
-        android:textColor="@android:color/darker_gray"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
-</androidx.constraintlayout.widget.ConstraintLayout>
+        android:layout_marginTop="24dp"
+        android:gravity="center"
+        android:text="Ocorreu um erro ao carregar."
+        android:textSize="16sp"
+        android:visibility="gone" />
+
+    <!-- Lista -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="16dp"
+        android:layout_weight="1"
+        android:visibility="gone" />
+</LinearLayout>
