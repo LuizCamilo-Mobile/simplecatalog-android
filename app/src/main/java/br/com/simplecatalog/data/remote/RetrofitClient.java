@@ -1,52 +1,77 @@
 package br.com.simplecatalog.data.remote;
 
-import java.util.concurrent.TimeUnit;
-
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
+
+import java.util.concurrent.TimeUnit;
+
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
-/**
- * RetrofitClient centraliza a configuração de rede do app.
- *
- * Responsabilidades:
- * - Criar e configurar o OkHttpClient (timeouts, interceptors, logs)
- * - Criar o Retrofit com baseUrl + Gson converter
- * - Expor uma instância pronta de ApiService
- *
- * Por que isso é útil:
- * - Evita repetir configuração de rede em vários lugares
- * - Facilita observabilidade (logs) e ajustes (timeouts, headers etc.)
- * - Mantém a boundary Remote bem isolada da UI e do domínio
- */
-public class RetrofitClient {
+public final class RetrofitClient {
 
-    // ApiService pronto para uso pelo Repository
-    public final ApiService apiService;
+    // Requisito: BASE_URL terminando em /
+    private static final String BASE_URL = "https://jsonplaceholder.typicode.com/";
 
-    public RetrofitClient() {
-        // 1) Interceptor de logs HTTP (útil em debug e entrevistas)
-        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+    private RetrofitClient() {}
 
-        // 2) OkHttp client configurado (timeouts + interceptors)
-        OkHttpClient okHttpClient = new OkHttpClient.Builder()
-                .addInterceptor(logging)
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(15, TimeUnit.SECONDS)
-                .writeTimeout(15, TimeUnit.SECONDS)
-                .build();
+    public static ApiService createApiService(boolean debug) {
+        OkHttpClient client = buildOkHttpClient(debug,
+                10,  // connect timeout
+                15,  // read timeout
+                15   // write timeout
+        );
 
-        // 3) Retrofit usando Base URL centralizada + conversor Gson
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(ApiEndpoints.BASE_URL)
+                .baseUrl(BASE_URL)
+                .client(client)
                 .addConverterFactory(GsonConverterFactory.create())
-                .client(okHttpClient)
                 .build();
 
-        // 4) Retrofit cria a implementação da interface ApiService em runtime
-        this.apiService = retrofit.create(ApiService.class);
+        return retrofit.create(ApiService.class);
+    }
+
+    // Cliente “agressivo” para forçar timeout mais facilmente
+    public static ApiService createTimeoutApiService(boolean debug) {
+        OkHttpClient client = buildOkHttpClient(debug,
+                2,   // connect timeout
+                1,   // read timeout (bem baixo para demonstrar timeout)
+                2
+        );
+
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(BASE_URL) // baseUrl é obrigatório, mesmo usando @Url
+                .client(client)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        return retrofit.create(ApiService.class);
+    }
+
+    private static OkHttpClient buildOkHttpClient(
+            boolean debug,
+            long connectTimeoutSec,
+            long readTimeoutSec,
+            long writeTimeoutSec
+    ) {
+        OkHttpClient.Builder builder = new OkHttpClient.Builder()
+                .connectTimeout(connectTimeoutSec, TimeUnit.SECONDS)
+                .readTimeout(readTimeoutSec, TimeUnit.SECONDS)
+                .writeTimeout(writeTimeoutSec, TimeUnit.SECONDS);
+
+        if (debug) {
+            HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+            builder.addInterceptor(logging);
+        }
+
+        // Exemplo de interceptor “de app” (não obrigatório):
+        builder.addInterceptor(chain -> chain.proceed(
+                chain.request().newBuilder()
+                        .header("X-Debug", "Exercise5")
+                        .build()
+        ));
+
+        return builder.build();
     }
 }
-
