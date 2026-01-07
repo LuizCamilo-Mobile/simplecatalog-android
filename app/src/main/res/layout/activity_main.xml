@@ -9,14 +9,7 @@
         android:id="@+id/btnRequest"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="GET Retrofit Raw" />
-
-    <Button
-        android:id="@+id/btnTimeout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="Simular Timeout" />
+        android:text="Fazer Requisição" />
 
     <TextView
         android:id="@+id/txtOutput"
