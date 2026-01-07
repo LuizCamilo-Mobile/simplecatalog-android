@@ -10,23 +10,24 @@ import androidx.appcompat.app.AppCompatActivity;
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import br.com.simplecatalog.R;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
+import br.com.simplecatalog.data.remote.ApiService;
+import br.com.simplecatalog.data.remote.RetrofitClient;
 import okhttp3.ResponseBody;
-import okhttp3.logging.HttpLoggingInterceptor;
+import retrofit2.Call;
+import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String TAG = "EX5_1_OKHTTP";
-    private static final String URL = "https://jsonplaceholder.typicode.com/posts/1";
+    private static final String TAG = "EX5_2_RETROFIT";
+    private static final String SLOW_URL = "https://httpstat.us/200?sleep=5000";
 
     private TextView txtOutput;
     private ExecutorService executor;
-    private OkHttpClient client;
+
+    private ApiService api;
+    private ApiService apiTimeout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,62 +35,74 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         txtOutput = findViewById(R.id.txtOutput);
-        Button btnGet = findViewById(R.id.btnGet);
+        Button btnRequest = findViewById(R.id.btnRequest);
+        Button btnTimeout = findViewById(R.id.btnTimeout);
 
-        // 1) Executor: garante que a rede roda fora da UI thread
         executor = Executors.newSingleThreadExecutor();
 
-        // 2) Logging interceptor (observabilidade)
-        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+        api = RetrofitClient.createApiService(true);
+        apiTimeout = RetrofitClient.createTimeoutApiService(true);
 
-        // 3) OkHttpClient com timeouts coerentes + interceptor
-        client = new OkHttpClient.Builder()
-                .connectTimeout(10, TimeUnit.SECONDS)
-                .readTimeout(15, TimeUnit.SECONDS)
-                .writeTimeout(15, TimeUnit.SECONDS)
-                .addInterceptor(logging)
-                .build();
-
-        btnGet.setOnClickListener(v -> doGet());
+        btnRequest.setOnClickListener(v -> getRetrofitRaw());
+        btnTimeout.setOnClickListener(v -> simulateTimeout());
     }
 
-    private void doGet() {
-        txtOutput.setText("Carregando...");
+    private void getRetrofitRaw() {
+        txtOutput.setText("Carregando (Retrofit Raw)...");
 
         executor.execute(() -> {
-            // 4) Monta Request
-            Request request = new Request.Builder()
-                    .url(URL)
-                    .get()
-                    .build();
+            Call<ResponseBody> call = api.getPostRaw();
 
-            // 5) Executa sincronamente (bloqueante) - por isso está no background
-            try (Response response = client.newCall(request).execute()) {
+            try {
+                // execute() é bloqueante -> background
+                Response<ResponseBody> response = call.execute();
 
                 int code = response.code();
-                ResponseBody body = response.body();
-                String bodyString = (body != null) ? body.string() : "";
+                String body = (response.body() != null) ? response.body().string() : "";
 
-                Log.d(TAG, "HTTP code = " + code);
-                Log.d(TAG, "Body length = " + bodyString.length());
+                Log.d(TAG, "HTTP code=" + code);
+                Log.d(TAG, "Body length=" + body.length());
 
-                // só pra confirmar visualmente que veio JSON (sem poluir)
-                String preview = bodyString.length() > 120
-                        ? bodyString.substring(0, 120) + "..."
-                        : bodyString;
-
-                Log.d(TAG, "Body preview = " + preview);
+                String preview = body.length() > 160 ? body.substring(0, 160) + "..." : body;
+                Log.d(TAG, "Body preview=" + preview);
 
                 runOnUiThread(() -> txtOutput.setText(
                         "HTTP " + code + "\n" +
-                                "Body length: " + bodyString.length() + "\n\n" +
+                                "Body length: " + body.length() + "\n\n" +
                                 preview
                 ));
 
             } catch (IOException e) {
                 Log.e(TAG, "IOException: " + e.getMessage(), e);
                 runOnUiThread(() -> txtOutput.setText("IOException: " + e.getMessage()));
+            }
+        });
+    }
+
+    private void simulateTimeout() {
+        txtOutput.setText("Simulando timeout...");
+
+        executor.execute(() -> {
+            Call<ResponseBody> call = apiTimeout.slowRaw(SLOW_URL);
+
+            try {
+                Response<ResponseBody> response = call.execute();
+                int code = response.code();
+                Log.d(TAG, "slowRaw HTTP code=" + code);
+
+                runOnUiThread(() -> txtOutput.setText("slowRaw retornou HTTP " + code +
+                        "\n(se não deu timeout, aumente o sleep)"));
+
+            } catch (IOException e) {
+                // aqui você deve ver SocketTimeoutException / timeout
+                Log.e(TAG, "Timeout/IOException esperado: " + e.getClass().getSimpleName()
+                        + " - " + e.getMessage(), e);
+
+                runOnUiThread(() -> txtOutput.setText(
+                        "Timeout/IOException esperado:\n" +
+                                e.getClass().getSimpleName() + "\n" +
+                                e.getMessage()
+                ));
             }
         });
     }
