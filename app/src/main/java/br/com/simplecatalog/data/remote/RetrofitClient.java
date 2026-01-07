@@ -16,7 +16,8 @@ public final class RetrofitClient {
     private RetrofitClient() {}
 
     public static ApiService createApiService(boolean debug) {
-        OkHttpClient client = buildOkHttpClient(debug,
+        OkHttpClient client = buildOkHttpClient(
+                debug,
                 10,  // connect timeout
                 15,  // read timeout
                 15   // write timeout
@@ -66,11 +67,12 @@ public final class RetrofitClient {
         }
 
         // Exemplo de interceptor “de app” (não obrigatório):
-        builder.addInterceptor(chain -> chain.proceed(
-                chain.request().newBuilder()
-                        .header("X-Debug", "Exercise5")
-                        .build()
-        ));
+        // útil para debug no back end.
+        // builder.addInterceptor(chain -> chain.proceed(
+        // chain.request().newBuilder()
+        // .header("X-Debug", "Exercise5")
+        // .build()
+        // ));
 
         return builder.build();
     }
