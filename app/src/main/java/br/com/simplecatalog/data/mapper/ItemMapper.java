@@ -1,56 +1,50 @@
 package br.com.simplecatalog.data.mapper;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import br.com.simplecatalog.data.local.entity.ItemEntity;
 import br.com.simplecatalog.data.remote.dto.ItemDto;
 import br.com.simplecatalog.domain.model.Item;
 
-/**
- * ItemMapper faz a tradução de dados entre:
- *  Remote (DTO) ↔ Local (Entity) ↔ Domain (Model)
- *
- *  ItemMapper é responsável por converter dados entre camadas:
- *  API (ItemDto) → Banco local (ItemEntity)
- *  Banco local (ItemEntity) → Domínio (Item)
- *  Isso respeita as boundaries do projeto, porque cada camada fala sua própria linguagem de dados, e o Mapper traduz entre elas.
- */
 public class ItemMapper {
 
-    /**
-     * Converte lista de DTOs da API para lista de Entities do banco local (Room)
-     */
     public List<ItemEntity> dtosToEntities(List<ItemDto> dtos) {
-        List<ItemEntity> entities = new ArrayList<>();
+        if (dtos == null) return Collections.emptyList();
+
+        List<ItemEntity> out = new ArrayList<>();
         for (ItemDto dto : dtos) {
-            entities.add(
-                    new ItemEntity(
-                            dto.getId(),        // ← JSON: id
-                            dto.getTitle(),     // ← JSON: title
-                            dto.getSubtitle()   // ← JSON: body (espelhado como subtitle no DTO)
-                    )
-            );
+            if (dto == null) continue;
+
+            long id = dto.getId();
+            String title = safe(dto.getTitle());
+            // Aqui simulamos “normalização” entre API e banco:
+            // API tem body, banco guarda como subtitle (ou uma coluna equivalente).
+            String subtitle = safe(dto.getBody());
+
+            out.add(new ItemEntity(id, title, subtitle));
         }
-        return entities;
+        return out;
     }
 
-    /**
-     * Converte lista de Entities do Room para lista de Models do domínio
-     * (o que a UI ou UseCase realmente usam)
-     */
     public List<Item> entitiesToDomain(List<ItemEntity> entities) {
-        List<Item> domainItems = new ArrayList<>();
+        if (entities == null) return Collections.emptyList();
+
+        List<Item> out = new ArrayList<>();
         for (ItemEntity entity : entities) {
-            domainItems.add(
-                    new Item(
-                            entity.getId(),        // ← banco: id
-                            entity.getTitle(),     // ← banco: title
-                            entity.getSubtitle()   // ← banco: subtitle
-                    )
-            );
+            if (entity == null) continue;
+
+            long id = entity.getId();
+            String title = safe(entity.getTitle());
+            String subtitle = safe(entity.getSubtitle());
+
+            out.add(new Item(id, title, subtitle));
         }
-        return domainItems;
+        return out;
+    }
+
+    private String safe(String s) {
+        return s == null ? "" : s;
     }
 }
-
