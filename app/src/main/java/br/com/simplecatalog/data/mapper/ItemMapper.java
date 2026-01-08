@@ -7,50 +7,33 @@ import br.com.simplecatalog.data.local.entity.ItemEntity;
 import br.com.simplecatalog.data.remote.dto.ItemDto;
 import br.com.simplecatalog.domain.model.Item;
 
-/**
- * ItemMapper faz a tradução de dados entre:
- *  Remote (DTO) ↔ Local (Entity) ↔ Domain (Model)
- *
- *  ItemMapper é responsável por converter dados entre camadas:
- *  API (ItemDto) → Banco local (ItemEntity)
- *  Banco local (ItemEntity) → Domínio (Item)
- *  Isso respeita as boundaries do projeto, porque cada camada fala sua própria linguagem de dados, e o Mapper traduz entre elas.
- */
 public class ItemMapper {
 
-    /**
-     * Converte lista de DTOs da API para lista de Entities do banco local (Room)
-     */
-    public List<ItemEntity> dtosToEntities(List<ItemDto> dtos) {
-        List<ItemEntity> entities = new ArrayList<>();
-        for (ItemDto dto : dtos) {
-            entities.add(
-                    new ItemEntity(
-                            dto.getId(),        // ← JSON: id
-                            dto.getTitle(),     // ← JSON: title
-                            dto.getSubtitle()   // ← JSON: body (espelhado como subtitle no DTO)
-                    )
-            );
-        }
-        return entities;
+    public Item toDomain(ItemEntity entity) {
+        return new Item(entity.id, entity.title, entity.subtitle);
     }
 
-    /**
-     * Converte lista de Entities do Room para lista de Models do domínio
-     * (o que a UI ou UseCase realmente usam)
-     */
-    public List<Item> entitiesToDomain(List<ItemEntity> entities) {
-        List<Item> domainItems = new ArrayList<>();
-        for (ItemEntity entity : entities) {
-            domainItems.add(
-                    new Item(
-                            entity.getId(),        // ← banco: id
-                            entity.getTitle(),     // ← banco: title
-                            entity.getSubtitle()   // ← banco: subtitle
-                    )
-            );
+    public ItemEntity toEntity(ItemDto dto) {
+        // subtitle vem do "body" do JSONPlaceholder
+        String subtitle = dto.body != null ? dto.body : "";
+        return new ItemEntity(dto.id, dto.title != null ? dto.title : "", subtitle);
+    }
+
+    public List<Item> toDomainListFromEntity(List<ItemEntity> entities) {
+        List<Item> result = new ArrayList<>();
+        if (entities == null) return result;
+        for (ItemEntity e : entities) {
+            result.add(toDomain(e));
         }
-        return domainItems;
+        return result;
+    }
+
+    public List<ItemEntity> toEntityListFromDto(List<ItemDto> dtos) {
+        List<ItemEntity> result = new ArrayList<>();
+        if (dtos == null) return result;
+        for (ItemDto dto : dtos) {
+            result.add(toEntity(dto));
+        }
+        return result;
     }
 }
-

@@ -7,83 +7,71 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-import java.util.ArrayList;
-
 import br.com.simplecatalog.databinding.ActivityMainBinding;
 import br.com.simplecatalog.di.AppContainer;
 import br.com.simplecatalog.ui.adapter.ItemsAdapter;
 import br.com.simplecatalog.ui.viewmodel.ItemsViewModel;
 import br.com.simplecatalog.ui.viewmodel.ItemsViewModelFactory;
 
-/**
- * Activity (UI):
- * - Configura layout, RecyclerView e observa estados do ViewModel
- * - Não faz chamadas de rede ou banco diretamente (isso fica no repository/usecase)
- */
 public class MainActivity extends AppCompatActivity {
 
     private ActivityMainBinding binding;
-    private ItemsAdapter adapter;
     private ItemsViewModel viewModel;
+    private ItemsAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // ViewBinding: evita findViewById e dá segurança de null
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        // 1) RecyclerView + Adapter
-        setupRecyclerView();
-
-        // 2) Monta dependências via AppContainer e cria ViewModel via Factory
+        setupRecycler();
         setupViewModel();
+        setupObservers();
+        setupActions();
 
-        // 3) Observa estados do ViewModel e atualiza UI
-        observeViewModel();
-
-        // 4) Dispara carregamento inicial (pode ser cache-first ou refresh)
         viewModel.loadItems();
     }
 
-    private void setupRecyclerView() {
-        adapter = new ItemsAdapter(new ArrayList<>());
-
+    private void setupRecycler() {
+        adapter = new ItemsAdapter();
         binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
         binding.recyclerView.setAdapter(adapter);
     }
 
     private void setupViewModel() {
-        // AppContainer fornece as dependências (UseCase já composto com Repository)
-        AppContainer container = AppContainer.getInstance(this);
-
-        ItemsViewModelFactory factory = new ItemsViewModelFactory(container.getItemsUseCase);
+        AppContainer container = AppContainer.getInstance(getApplicationContext());
+        ItemsViewModelFactory factory = new ItemsViewModelFactory(container.getGetItemsUseCase());
         viewModel = new ViewModelProvider(this, factory).get(ItemsViewModel.class);
     }
 
-    private void observeViewModel() {
-        viewModel.getItems().observe(this, items -> {
-            // Atualiza lista
-            adapter.updateItems(items);
-
-            // Se tem itens, mostra lista e esconde estado vazio (se existir)
-            binding.recyclerView.setVisibility(View.VISIBLE);
-            binding.emptyState.setVisibility(items == null || items.isEmpty() ? View.VISIBLE : View.GONE);
-        });
-
+    private void setupObservers() {
         viewModel.getLoading().observe(this, isLoading -> {
-            // Mostra/oculta progress
-            binding.progressBar.setVisibility(Boolean.TRUE.equals(isLoading) ? View.VISIBLE : View.GONE);
+            boolean showing = isLoading != null && isLoading;
+            binding.progressBar.setVisibility(showing ? View.VISIBLE : View.GONE);
+            // Enquanto carrega, não precisa esconder a lista; UX fica melhor mantendo cache visível.
         });
 
-        viewModel.getError().observe(this, message -> {
-            if (message != null) {
-                binding.errorText.setText(message);
-                binding.errorText.setVisibility(View.VISIBLE);
+        viewModel.getError().observe(this, msg -> {
+            if (msg != null && !msg.trim().isEmpty()) {
+                binding.txtError.setText(msg);
+                binding.txtError.setVisibility(View.VISIBLE);
             } else {
-                binding.errorText.setVisibility(View.GONE);
+                binding.txtError.setVisibility(View.GONE);
             }
         });
+
+        viewModel.getItems().observe(this, items -> {
+            adapter.submit(items);
+
+            boolean empty = (items == null || items.isEmpty());
+            binding.txtEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
+            binding.recyclerView.setVisibility(empty ? View.GONE : View.VISIBLE);
+        });
+    }
+
+    private void setupActions() {
+        binding.btnRefresh.setOnClickListener(v -> viewModel.refreshItems());
     }
 }
